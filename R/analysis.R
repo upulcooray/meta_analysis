@@ -55,8 +55,10 @@ get_intcpt <- function(x){
 }
 
 results<- dat %>%
+  mutate(outcome= factor(outcome, levels = c("ISQ", "ITV","PTV"))) %>%
   group_by(outcome) %>%
   nest() %>%
+  arrange(outcome) %>%
   mutate(cov_mat= map(.x=data, ~with(.x,
                                      impute_covariance_matrix(vi=vi,
                                                               cluster = author,
@@ -102,18 +104,18 @@ results<- dat %>%
 
 # intercept only results-----
 isq_intrecept <- results$intercept[[1]]
-ptv_intrecept <- results$intercept[[2]]
-itv_intrecept <- results$intercept[[3]]
+itv_intrecept <- results$intercept[[2]]
+ptv_intrecept <- results$intercept[[3]]
 
 # intercept + bone parameter as a moderator
 isq_int_bone <- results$bone_int[[1]]
-ptv_int_bone <- results$bone_int[[2]]
-itv_int_bone <- results$bone_int[[3]]
+itv_int_bone <- results$bone_int[[2]]
+ptv_int_bone <- results$bone_int[[3]]
 
 # intercept + implant per patient as a moderator
 isq_int_imp <- results$imp_pt_int[[1]]
-ptv_int_imp <- results$imp_pt_int[[2]]
-itv_int_imp <- results$imp_pt_int[[3]]
+itv_int_imp <- results$imp_pt_int[[2]]
+ptv_int_imp <- results$imp_pt_int[[3]]
 
 # access p value= isq_intrecept$QEp
 
@@ -121,8 +123,8 @@ itv_int_imp <- results$imp_pt_int[[3]]
 
 # intercept + implant per patient + bone parameter as a moderator
 isq_int_imp_bone <- results$imp_pt_bone_int[[1]]
-ptv_int_imp_bone <- results$imp_pt_bone_int[[2]]
-itv_int_imp_bone <- results$imp_pt_bone_int[[3]]
+itv_int_imp_bone <- results$imp_pt_bone_int[[2]]
+ptv_int_imp_bone <- results$imp_pt_bone_int[[3]]
 
 
 # forest plot ISQ ----------
@@ -135,6 +137,9 @@ isq_hu<- isq %>% filter(b_para=="HU")
 res_isq_ct <- rma(yi, vi, subset=(b_para=="CT"), data=isq)
 res_isq_gv <- rma(yi, vi, subset=(b_para=="GV"),     data=isq)
 res_isq_hu <- rma(yi, vi, subset=(b_para=="HU"),  data=isq)
+
+
+# Forest plot for ISQ
 
 xmin=-3
 xmax=3.1
@@ -203,6 +208,161 @@ addpoly(x = isq_int_imp_bone$beta,
         mlab = NA)
 text(-3,-7, "Multivariate model with RVE (bone parameter + implants per patient)", cex = 0.75,pos = 4)
 text(-3,-8, textfun("",results$imp_pt_bone[[1]]),cex = 0.6,pos = 4)
+
+
+# Forest plot for ITV
+
+itv<- results$data[[2]]
+itv_ct <- itv %>% filter(b_para=="CT")
+itv_gv <- itv %>% filter(b_para=="GV")
+itv_hu<- itv %>% filter(b_para=="HU")
+
+res_itv_ct <- rma(yi, vi, subset=(b_para=="CT"), data=itv)
+res_itv_gv <- rma(yi, vi, subset=(b_para=="GV"),     data=itv)
+res_itv_hu <- rma(yi, vi, subset=(b_para=="HU"),  data=itv)
+
+
+
+
+xmin=-3
+xmax=3.1
+ymin=-6
+ymax= nrow(itv)+ 15
+
+forest(itv_intrecept,
+       xlim = c(xmin,xmax),
+       ylim= c(ymin,ymax),
+       header = c("First author (Year)", "Correlation \n Coefficient [95% CI]") ,
+       xlab = "Correlation Coefficient",
+       psize = 1.1,
+       slab = NA,
+       cex=.8,
+       order = b_para,
+       # rows = c(rev(16:19), rev(8:11), rev(2:3) ),
+       rows = c(rev(17:20), rev(9:12), rev(3:4) ),
+       # transf = convert_z2r,
+       atransf = convert_z2r,
+       ilab = cbind(location),
+       ilab.xpos=c(-1.6),
+       ilab.pos=4,
+       mlab = NA,
+       col = "blue",
+       cex.lab = 0.9)
+text(xmin, c(21.5,13.5,5.5), c("Bone density (HU)", "Bone density (GV)","Cortical thickness (CT)"
+                        ), pos=4,cex = 0.9,font = 4)
+text(xmin, rev(17:20), itv_hu$author  , pos=4, cex = 0.8)
+text(xmin, rev(9:12), itv_gv$author  , pos=4, cex = 0.8)
+text(xmin, rev(3:4), itv_ct$author  , pos=4, cex = 0.8)
+
+text(-1.6, 21.5, "Location of the measure", cex = 0.75, font = 4,pos = 4 )
+text(0,ymax, "Correlation between bone parameters and PIS (ITV)", cex= 1)
+
+addpoly(res_itv_hu, row=15.5,
+        mlab=mlabfun("RE model for HU", res_itv_hu),
+        col = "grey90",lty = "dashed")
+addpoly(res_itv_gv, row= 7.5,
+        mlab=mlabfun("RE model for GV", res_itv_gv),
+        col = "grey90",lty = "dashed")
+addpoly(res_itv_ct, row= 1.5,
+        # mlab = NA,
+        mlab=mlabfun("RE model for CT", res_itv_ct),
+        col = "grey90",lty = "dashed")
+
+text(-3,-1, "Overall multivariate model with RVE (only intercept)", cex = 0.75,pos = 4)
+text(-3,-1.75, textfun("",itv_intrecept),cex = 0.6,pos = 4)
+
+addpoly(x = itv_int_bone$beta,
+        sei = itv_int_bone$SE,
+        rows = -3,col = "grey",
+        mlab = NA)
+text(-3,-3, "Multivariate model with RVE (bone parameter)", cex = 0.75,pos = 4)
+text(-3,-3.75, textfun("",results$bone[[2]]),cex = 0.6,pos = 4)
+
+addpoly(x = itv_int_imp$beta,
+        sei = itv_int_imp$SE,
+        rows = -5,col = "grey",
+        mlab = NA)
+text(-3,-5, "Multivariate model with RVE (implants per patient)", cex = 0.75,pos = 4)
+text(-3,-5.75, textfun("",results$imp_pt[[2]]),cex = 0.6,pos = 4)
+
+
+addpoly(x = itv_int_imp_bone$beta,
+        sei = itv_int_imp_bone$SE,
+        rows = -7,col = "grey",
+        mlab = NA)
+text(-3,-7, "Multivariate model with RVE (bone parameter + implants per patient)", cex = 0.75,pos = 4)
+text(-3,-8, textfun("",results$imp_pt_bone[[2]]),cex = 0.6,pos = 4)
+
+
+# Forest plot for PTV
+
+ptv<- results$data[[3]]
+ptv_ct <- ptv %>% filter(b_para=="CT")
+ptv_gv <- ptv %>% filter(b_para=="GV")
+ptv_hu<- ptv %>% filter(b_para=="HU")
+
+# res_ptv_ct <- rma(yi, vi, subset=(b_para=="CT"), data=ptv)
+# res_ptv_gv <- rma(yi, vi, subset=(b_para=="GV"),     data=ptv)
+res_ptv_hu <- rma(yi, vi, subset=(b_para=="HU"),  data=ptv)
+
+
+
+
+xmin=-3
+xmax=3.1
+ymin=-3
+ymax= nrow(ptv)+ 10
+
+forest(ptv_intrecept,
+       xlim = c(xmin,xmax),
+       ylim= c(ymin,ymax),
+       header = c("First author (Year)", "Correlation \n Coefficient [95% CI]") ,
+       xlab = "Correlation Coefficient",
+       psize = 1.1,
+       slab = NA,
+       cex=.8,
+       order = b_para,
+       # rows = c(rev(16:19), rev(8:11), rev(2:3) ),
+       rows = c(rev(8:12), 4 , 1 ),
+       # transf = convert_z2r,
+       atransf = convert_z2r,
+       ilab = cbind(location),
+       ilab.xpos=c(-1.6),
+       ilab.pos=4,
+       mlab = NA,
+       col = "blue",
+       cex.lab = 0.9)
+text(xmin, c(13.5,5.5,2.5), c("Bone density (HU)", "Bone density (GV)","Cortical thickness (CT)"
+                        ), pos=4,cex = 0.9,font = 4)
+text(xmin, rev(8:12), ptv_hu$author  , pos=4, cex = 0.8)
+text(xmin, 4, ptv_gv$author  , pos=4, cex = 0.8)
+text(xmin, 1, ptv_ct$author  , pos=4, cex = 0.8)
+
+text(-1.6, 13.5, "Location of the measure", cex = 0.75, font = 4,pos = 4 )
+text(0,ymax, "Correlation between bone parameters and PIS (PTV)", cex= 1)
+
+addpoly(res_ptv_hu, row=7,
+        mlab=mlabfun("RE model for HU", res_ptv_hu),
+        col = "grey90",lty = "dashed")
+
+text(-3,-1, "Overall multivariate model with RVE (only intercept)", cex = 0.75,pos = 4)
+text(-3,-1.75, textfun("",ptv_intrecept),cex = 0.6,pos = 4)
+#
+# addpoly(x = ptv_int_bone$beta,
+#         sei = ptv_int_bone$SE,
+#         rows = -3,col = "grey",
+#         mlab = NA)
+# text(-3,-3, "Multivariate model with RVE (bone parameter)", cex = 0.75,pos = 4)
+# text(-3,-3.75, textfun("",results$bone[[3]]),cex = 0.6,pos = 4)
+
+# addpoly(x = ptv_int_imp$beta,
+#         sei = ptv_int_imp$SE,
+#         rows = -5,col = "grey",
+#         mlab = NA)
+# text(-3,-5, "Multivariate model with RVE (implants per patient)", cex = 0.75,pos = 4)
+# text(-3,-5.75, textfun("",results$imp_pt[[3]]),cex = 0.6,pos = 4)
+
+
 
 
 
